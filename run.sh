@@ -32,14 +32,12 @@ if python$PYTHON_VERSION --version &> /dev/null; then
         git fetch --tags && \
         git checkout 0.1.1 && \
         echo "Installing TTS..." && \
-        # Install numpy first with compatible version
-        pip install numpy>=1.24.0 -q && \
-        pip install -e .[all] -q && \
+        pip install --use-deprecated=legacy-resolver -e . -q && \
         cd .. && \
         echo "Installing other requirements..." && \
         pip install -r requirements.txt -q && \
         echo "Downloading Japanese/Chinese tokenizer..." && \
-        python -m unidic download
+        # python -m unidic download
         touch .env/ok
     fi
     python app.py

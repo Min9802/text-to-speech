@@ -3,50 +3,89 @@ setlocal enabledelayedexpansion
 
 set PYTHON_VERSION=3.10
 
-REM Kiểm tra Python đã được cài đặt chưa
+REM Check if Python is installed
 python --version >nul 2>&1
-if errorlevel 1 (
-    echo Python %PYTHON_VERSION% chua duoc cai dat. Vui long cai dat Python.
+if %errorlevel% neq 0 (
+    echo Python is not installed or not in PATH. Please install Python %PYTHON_VERSION% or later.
+    pause
     exit /b 1
 )
 
-echo Su dung Python phien ban: %PYTHON_VERSION%
+echo Using Python version:
+python --version
 
-REM Kiểm tra môi trường ảo
+REM Check if virtual environment exists and is OK
 if exist .env\ok (
+    echo Activating existing virtual environment
     call .env\Scripts\activate.bat
 ) else (
-    echo Moi truong chua san sang. Dang thiet lap...
-    rmdir /s /q .env 2>nul
+    echo The environment is not ok. Running setup
+    if exist .env (
+        rmdir /s /q .env
+    )
     
-    REM Tạo môi trường ảo mới
+    echo Creating virtual environment
     python -m venv .env
-    if errorlevel 1 (
-        echo Khong the tao moi truong ao.
+    if %errorlevel% neq 0 (
+        echo Failed to create virtual environment.
+        pause
         exit /b 1
     )
-    REM Cập nhật submodules
+    
+    call .env\Scripts\activate.bat
+    
+    echo Upgrading pip setuptools and wheel
+    python -m pip install --upgrade pip setuptools wheel
+    
+    echo Updating git submodules
     git submodule update --init --recursive
+    if %errorlevel% neq 0 (
+        echo Failed to update git submodules.
+        pause
+        exit /b 1
+    )
     
     cd TTS
+    echo Fetching tags and checking out version 0.1.1
     git fetch --tags
-    @REM git checkout 0.1.1
+    git checkout 0.1.1
+    if %errorlevel% neq 0 (
+        echo Failed to checkout TTS version 0.1.1.
+        cd ..
+        pause
+        exit /b 1
+    )
     
-    echo Dang cai dat TTS...
-    pip install -e .[all]
+    echo Installing TTS in development mode
+    pip install -e . -q
+    if %errorlevel% neq 0 (
+        echo Failed to install TTS.
+        cd ..
+        pause
+        exit /b 1
+    )
     
     cd ..
     
-    echo Dang cai dat cac yeu cau khac...
+    echo Installing project requirements (gradio, transformers, etc.)
     pip install -r requirements.txt -q
     
-    echo Dang tai xuong tokenizer tieng Nhat/Trung...
-    python -m unidic download
+    echo Downloading Japanese/Chinese tokenizer
+    @REM python -m unidic download
+    if %errorlevel% neq 0 (
+        echo Warning: Failed to download unidic tokenizer but continuing
+    )
     
+    echo Setup completed successfully.
     echo. > .env\ok
 )
 
-REM Chạy ứng dụng
+echo Starting app
 python app.py
+if %errorlevel% neq 0 (
+    echo Failed to run app.py
+    pause
+    exit /b 1
+)
 
-endlocal
+pause

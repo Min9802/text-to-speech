@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  tts-app:
+    build: .
+    container_name: vixtts-app
+    ports:
+      - "5003:5003"  # Map host port 5003 to container port 5003
+    volumes:
+      - ./model:/app/model            # Mount model directory
+      - ./output:/app/output          # Mount output directory for generated audio
+      - ./assets:/app/assets          # Mount assets directory
+    environment:
+      - PYTHONUNBUFFERED=1           # Ensure Python output is not buffered
+      - CUDA_VISIBLE_DEVICES=all     # Allow access to all GPUs (if available)
+    restart: unless-stopped          # Restart container unless manually stopped
+    
+    # Optional: Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 8G                 # Limit memory usage
+        reservations:
+          memory: 2G                 # Reserve minimum memory
+          
+    # Optional: GPU support (uncomment if you have NVIDIA GPU)
+    # runtime: nvidia
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=all
+    
+    # Health check to ensure the service is running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# Optional: Create named volumes for persistent data
+volumes:
+  model_data:
+    driver: local
+  output_data:
+    driver: local
